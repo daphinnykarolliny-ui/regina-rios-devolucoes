@@ -1,0 +1,27 @@
+{
+  "name": "regina-rios-devolucoes",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "sync": "tsx scripts/sync.ts",
+    "db:seed-reasons": "tsx prisma/seedReasonMapping.ts"
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "@prisma/client": "latest"
+  },
+  "devDependencies": {
+    "typescript": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "prisma": "latest",
+    "vitest": "latest",
+    "tsx": "latest"
+  }
+}
