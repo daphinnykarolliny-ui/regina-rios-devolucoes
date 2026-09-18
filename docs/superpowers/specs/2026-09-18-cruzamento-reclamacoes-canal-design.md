@@ -206,3 +206,25 @@ para o "porquê", não entra no cálculo de taxa.
   real de dados da primeira coleta.
 - Credenciais/documentação de Nuvemshop, Troque Commerce e Umbler — a
   fornecer pela usuária antes da implementação dos conectores.
+
+## 14. Extensões futuras previstas (fora do escopo desta versão)
+
+Registradas aqui para não se perderem e para a arquitetura não fechar porta
+para elas — sem desenho detalhado ainda, a refinar quando entrarem em
+escopo.
+
+- **Categorias de dor além da taxonomia de devolução, via Umbler**: defeito
+  de fábrica fora do fluxo de troca, furo de estoque, caso isolado de
+  extravio com transportadora, entre outros. A entidade `WhatsAppMessage`
+  já é texto livre e comporta uma taxonomia de tags mais ampla que a da
+  seção 4 (que é específica de motivo de troca/devolução) — quando esse
+  trabalho entrar em escopo, é uma tabela de tags nova e uma etapa de
+  classificação sobre o texto já ingerido, não uma mudança estrutural.
+- **Relatório de oportunidades de venda (clientes em stand-by)**: clientes
+  com intenção de compra que não avançou, a reabordar. É um relatório
+  distinto do núcleo de devolução — provavelmente lê dados de cliente/pedido
+  da Nuvemshop (possivelmente cruzando com a rotina já existente de
+  carrinho abandonado da Regina Rios) mas com critério próprio de "parado".
+  Compartilha a mesma base (Postgres) e pode virar uma seção nova dentro do
+  mesmo dashboard, porém é escopo suficiente para merecer seu próprio
+  brainstorm quando chegar a vez.
