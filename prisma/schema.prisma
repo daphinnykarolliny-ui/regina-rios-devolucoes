@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ReasonCategory {
+  NUMERACAO
+  COR
+  CONFORTO
+  QUALIDADE
+  ENTREGA
+  ESTOQUE
+  ARREPENDIMENTO
+  PROCESSO
+}
+
+enum ReturnType {
+  TROCA
+  DEVOLUCAO
+}
+
+enum CutType {
+  SIZE
+  COLOR
+  MODEL
+  SKU_COLOR
+  SHOE_TYPE
+  REASON
+}
+
+model Product {
+  id                 String   @id @default(cuid())
+  nuvemshopVariantId BigInt   @unique
+  sku                String?
+  model              String
+  color              String?
+  size               String?
+  shoeType           String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  orderItems     OrderItem[]
+  aliases        ProductAlias[]
+  returnRequests ReturnRequest[]
+}
+
+model ProductAlias {
+  id         String   @id @default(cuid())
+  source     String
+  rawText    String
+  productId  String
+  confidence Float
+  reviewedBy String?
+  createdAt  DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([source, rawText])
+}
+
+model Order {
+  id            String   @id @default(cuid())
+  nuvemshopOrderId BigInt   @unique
+  orderNumber   String   @unique
+  status        String
+  paymentStatus String
+  createdAt     DateTime
+  updatedAt     DateTime @updatedAt
+
+  items         OrderItem[]
+  cancellation  OrderCancellation?
+}
+
+model OrderItem {
+  id                  String @id @default(cuid())
+  nuvemshopLineItemId BigInt @unique
+  orderId             String
+  productId           String
+  quantity            Int
+  unitPriceCents      Int
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model ReturnRequest {
+  id               String         @id @default(cuid())
+  troqueRequestId  String         @unique
+  orderNumber      String
+  matchedOrderId   String?
+  matchedProductId String?
+  rawProductText   String
+  rawReasonText    String
+  mappedReason     ReasonCategory?
+  type             ReturnType
+  status           String
+  requestedAt      DateTime
+  needsReview      Boolean        @default(false)
+  rawPayload       Json
+  createdAt        DateTime       @default(now())
+
+  matchedProduct Product? @relation(fields: [matchedProductId], references: [id])
+
+  @@index([orderNumber])
+  @@index([matchedProductId])
+}
+
+model OrderCancellation {
+  id          String   @id @default(cuid())
+  orderId     String   @unique
+  reason      String
+  cancelledAt DateTime
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+model WhatsAppMessage {
+  id              String   @id @default(cuid())
+  umblerMessageId String   @unique
+  customerRef     String
+  text            String
+  createdAt       DateTime
+  rawPayload      Json
+}
+
+model ReasonMapping {
+  id             String         @id @default(cuid())
+  sourceRawText  String         @unique
+  mappedReason   ReasonCategory
+  active         Boolean        @default(true)
+}
+
+model SyncStatus {
+  id            String    @id @default(cuid())
+  source        String    @unique
+  lastRunAt     DateTime
+  lastSuccessAt DateTime?
+  lastError     String?
+}
+
+model MetricSnapshot {
+  id             String   @id @default(cuid())
+  cutType        CutType
+  cutValue       String
+  windowStart    DateTime
+  windowEnd      DateTime
+  unitsSold      Int
+  unitsReturned  Int
+  taxa           Float
+  indice         Float
+  belowMinVolume Boolean
+  computedAt     DateTime @default(now())
+
+  @@index([cutType, windowStart, windowEnd])
+}

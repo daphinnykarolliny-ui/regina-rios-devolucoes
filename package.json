@@ -14,13 +14,13 @@
     "next": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "@prisma/client": "latest"
+    "@prisma/client": "6.19.3"
   },
   "devDependencies": {
     "typescript": "latest",
     "@types/node": "latest",
     "@types/react": "latest",
-    "prisma": "latest",
+    "prisma": "6.19.3",
     "vitest": "latest",
     "tsx": "latest"
   }
