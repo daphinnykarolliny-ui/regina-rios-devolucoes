@@ -81,4 +81,94 @@ describe("computeMetricSnapshots", () => {
     // overall taxa = 2 / 20 = 0.1, so size37's indice = 0.2 / 0.1 = 2.0
     expect(size37?.indice).toBeCloseTo(2.0);
   });
+
+  it("excludes order items from cancelled orders even when paymentStatus is paid", async () => {
+    const now = new Date("2026-09-18T00:00:00Z");
+    const withinWindow = new Date("2026-08-01T00:00:00Z");
+
+    // Store cancelled this order after payment was already captured: status "cancelled"
+    // but paymentStatus still "paid", with an OrderCancellation row (as syncOrderCancellations
+    // would produce). Its items must never count as "vendido".
+    const product = await prisma.product.create({
+      data: { nuvemshopVariantId: 3n, model: "Sandália Bia", color: "Preto", size: "39" },
+    });
+    const order = await prisma.order.create({
+      data: { nuvemshopOrderId: 20n, orderNumber: "D", status: "cancelled", paymentStatus: "paid", createdAt: withinWindow },
+    });
+    await prisma.orderItem.create({
+      data: { nuvemshopLineItemId: 200n, orderId: order.id, productId: product.id, quantity: 7, unitPriceCents: 10000 },
+    });
+    await prisma.orderCancellation.create({
+      data: { orderId: order.id, reason: "cancelled", cancelledAt: withinWindow },
+    });
+
+    await computeMetricSnapshots(prisma, { now, windowDays: 90 });
+
+    // size "39" is unique to this cancelled order's product: if its items were (wrongly)
+    // counted, a SIZE/39 snapshot would exist. It must not.
+    const size39 = await prisma.metricSnapshot.findFirst({ where: { cutType: "SIZE", cutValue: "39" } });
+    expect(size39).toBeNull();
+  });
+
+  it("buckets returns with no mapped reason under NAO_MAPEADO in the REASON cut", async () => {
+    const now = new Date("2026-09-18T00:00:00Z");
+    const withinWindow = new Date("2026-08-01T00:00:00Z");
+
+    await prisma.returnRequest.create({
+      data: {
+        troqueRequestId: "r-unmapped",
+        orderNumber: "Z",
+        rawProductText: "x",
+        rawReasonText: "motivo estranho",
+        mappedReason: null,
+        type: "TROCA",
+        status: "done",
+        requestedAt: withinWindow,
+        rawPayload: {},
+      },
+    });
+
+    await computeMetricSnapshots(prisma, { now, windowDays: 90 });
+
+    const naoMapeado = await prisma.metricSnapshot.findFirst({ where: { cutType: "REASON", cutValue: "NAO_MAPEADO" } });
+    expect(naoMapeado?.unitsReturned).toBe(1);
+  });
+
+  it("flags belowMinVolume under the threshold and clears it at/above the threshold", async () => {
+    const now = new Date("2026-09-18T00:00:00Z");
+    const withinWindow = new Date("2026-08-01T00:00:00Z");
+
+    const lowProduct = await prisma.product.create({
+      data: { nuvemshopVariantId: 4n, model: "Sandália Cia", color: "Preto", size: "40" },
+    });
+    const highProduct = await prisma.product.create({
+      data: { nuvemshopVariantId: 5n, model: "Sandália Cia", color: "Preto", size: "41" },
+    });
+
+    const lowOrder = await prisma.order.create({
+      data: { nuvemshopOrderId: 30n, orderNumber: "E", status: "open", paymentStatus: "paid", createdAt: withinWindow },
+    });
+    await prisma.orderItem.create({
+      data: { nuvemshopLineItemId: 300n, orderId: lowOrder.id, productId: lowProduct.id, quantity: 10, unitPriceCents: 10000 },
+    });
+
+    const highOrder = await prisma.order.create({
+      data: { nuvemshopOrderId: 31n, orderNumber: "F", status: "open", paymentStatus: "paid", createdAt: withinWindow },
+    });
+    await prisma.orderItem.create({
+      data: { nuvemshopLineItemId: 301n, orderId: highOrder.id, productId: highProduct.id, quantity: 20, unitPriceCents: 10000 },
+    });
+
+    await computeMetricSnapshots(prisma, { now, windowDays: 90 });
+
+    const size40 = await prisma.metricSnapshot.findFirst({ where: { cutType: "SIZE", cutValue: "40" } });
+    const size41 = await prisma.metricSnapshot.findFirst({ where: { cutType: "SIZE", cutValue: "41" } });
+
+    // metricsConfig.minVolumeThreshold defaults to 15 (from METRICS_MIN_VOLUME_THRESHOLD=15 in .env)
+    expect(size40?.unitsSold).toBe(10);
+    expect(size40?.belowMinVolume).toBe(true);
+
+    expect(size41?.unitsSold).toBe(20);
+    expect(size41?.belowMinVolume).toBe(false);
+  });
 });

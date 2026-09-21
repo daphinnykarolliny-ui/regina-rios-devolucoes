@@ -119,7 +119,13 @@ export async function computeMetricSnapshots(
   const { start, end } = resolveWindow(now, windowDays, metricsConfig.maturityLagDays);
 
   const items = await prisma.orderItem.findMany({
-    where: { order: { createdAt: { gte: start, lt: end }, paymentStatus: "paid" } },
+    where: {
+      order: {
+        createdAt: { gte: start, lt: end },
+        paymentStatus: "paid",
+        cancellation: null,
+      },
+    },
     include: { product: true },
   });
 
