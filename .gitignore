@@ -4,3 +4,7 @@ node_modules/
 .env
 .env.local
 *.log
+
+# typescript / next.js build artifacts
+*.tsbuildinfo
+next-env.d.ts
