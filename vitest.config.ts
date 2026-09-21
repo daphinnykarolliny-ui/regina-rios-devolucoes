@@ -1,6 +1,14 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  resolve: {
+    // Mirror tsconfig.json's "@/*" -> "./*" path alias so modules that use it
+    // (e.g. middleware.ts, app/api/login/route.ts) resolve under vitest too.
+    alias: {
+      "@": fileURLToPath(new URL(".", import.meta.url)),
+    },
+  },
   test: {
     environment: "node",
     globals: false,
