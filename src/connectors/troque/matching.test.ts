@@ -109,4 +109,77 @@ describe("matchReturnRequestsToProducts", () => {
     expect(updated?.matchedProductId).toBeNull();
     expect(updated?.needsReview).toBe(true);
   });
+
+  it("uses a ProductAlias cache hit and sets matchedOrderId when the aliased product belongs to the order", async () => {
+    const order = await seedOrderWithItems("6003", [
+      { variantId: 4n, model: "Sandália Ana", color: "Preto", size: "37" },
+    ]);
+    const item = await prisma.orderItem.findFirstOrThrow({ where: { orderId: order.id } });
+    await prisma.productAlias.create({
+      data: {
+        source: "TROQUE",
+        rawText: "sandalia cache hit",
+        productId: item.productId,
+        confidence: 1.0,
+      },
+    });
+    await prisma.returnRequest.create({
+      data: {
+        troqueRequestId: "r3",
+        orderNumber: "6003",
+        rawProductText: "Sandalia Cache Hit",
+        rawReasonText: "não coube",
+        type: "DEVOLUCAO",
+        status: "pending",
+        requestedAt: new Date("2026-08-05"),
+        rawPayload: {},
+      },
+    });
+
+    await matchReturnRequestsToProducts(prisma);
+
+    const updated = await prisma.returnRequest.findUnique({ where: { troqueRequestId: "r3" } });
+    expect(updated?.matchedOrderId).toBe(order.id);
+    expect(updated?.matchedProductId).toBe(item.productId);
+    expect(updated?.needsReview).toBe(false);
+  });
+
+  it("ignores a ProductAlias cache hit when the aliased product does not belong to this order, falling back to normal matching", async () => {
+    const otherOrder = await seedOrderWithItems("6004", [
+      { variantId: 5n, model: "Bota Clara", color: "Marrom", size: "38" },
+    ]);
+    const otherItem = await prisma.orderItem.findFirstOrThrow({ where: { orderId: otherOrder.id } });
+    await prisma.productAlias.create({
+      data: {
+        source: "TROQUE",
+        rawText: "produto de outro pedido",
+        productId: otherItem.productId,
+        confidence: 1.0,
+      },
+    });
+
+    const order = await seedOrderWithItems("6005", [
+      { variantId: 6n, model: "Sandália Ana", color: "Preto", size: "37" },
+    ]);
+    const item = await prisma.orderItem.findFirstOrThrow({ where: { orderId: order.id } });
+    await prisma.returnRequest.create({
+      data: {
+        troqueRequestId: "r4",
+        orderNumber: "6005",
+        rawProductText: "Produto De Outro Pedido",
+        rawReasonText: "não coube",
+        type: "DEVOLUCAO",
+        status: "pending",
+        requestedAt: new Date("2026-08-05"),
+        rawPayload: {},
+      },
+    });
+
+    await matchReturnRequestsToProducts(prisma);
+
+    const updated = await prisma.returnRequest.findUnique({ where: { troqueRequestId: "r4" } });
+    expect(updated?.matchedOrderId).toBe(order.id);
+    expect(updated?.matchedProductId).toBe(item.productId);
+    expect(updated?.needsReview).toBe(false);
+  });
 });

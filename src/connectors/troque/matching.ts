@@ -32,22 +32,22 @@ export async function matchReturnRequestsToProducts(prisma: PrismaClient): Promi
   const pending = await prisma.returnRequest.findMany({ where: { matchedProductId: null } });
 
   for (const rr of pending) {
-    const alias = await prisma.productAlias.findUnique({
-      where: { source_rawText: { source: "TROQUE", rawText: rr.rawProductText.trim().toLowerCase() } },
-    });
-    if (alias) {
-      await prisma.returnRequest.update({
-        where: { id: rr.id },
-        data: { matchedProductId: alias.productId, needsReview: false },
-      });
-      continue;
-    }
-
     const order = await prisma.order.findUnique({
       where: { orderNumber: rr.orderNumber },
       include: { items: { include: { product: true } } },
     });
     if (!order) continue;
+
+    const alias = await prisma.productAlias.findUnique({
+      where: { source_rawText: { source: "TROQUE", rawText: rr.rawProductText.trim().toLowerCase() } },
+    });
+    if (alias && order.items.some((item) => item.productId === alias.productId)) {
+      await prisma.returnRequest.update({
+        where: { id: rr.id },
+        data: { matchedOrderId: order.id, matchedProductId: alias.productId, needsReview: false },
+      });
+      continue;
+    }
 
     if (order.items.length === 1) {
       const [item] = order.items;

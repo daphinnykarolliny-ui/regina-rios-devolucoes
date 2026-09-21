@@ -24,6 +24,7 @@ export async function ingestTroqueReturnRequests(
         type,
         status: item.status,
         rawPayload: payload,
+        ...(mappedReason === null ? { needsReview: true } : {}),
       },
       create: {
         troqueRequestId: item.id,
