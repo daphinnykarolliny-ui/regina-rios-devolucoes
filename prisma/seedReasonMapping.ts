@@ -1,9 +1,9 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, type ReasonCategory } from "@prisma/client";
 import { normalizeReasonText } from "../src/taxonomy/reasonMapping";
 
 const prisma = new PrismaClient();
 
-const SEED: { text: string; reason: string }[] = [
+const SEED: { text: string; reason: ReasonCategory }[] = [
   { text: "não coube, veio pequeno", reason: "NUMERACAO" },
   { text: "não coube, veio grande", reason: "NUMERACAO" },
   { text: "cor diferente da foto", reason: "COR" },
@@ -25,7 +25,7 @@ async function main() {
       update: {},
       create: {
         sourceRawText: normalizeReasonText(entry.text),
-        mappedReason: entry.reason as never,
+        mappedReason: entry.reason,
         active: true,
       },
     });
